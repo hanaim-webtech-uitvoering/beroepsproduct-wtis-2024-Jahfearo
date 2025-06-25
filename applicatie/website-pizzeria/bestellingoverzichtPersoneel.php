@@ -16,15 +16,15 @@
         </div>
         <nav>
             <ul>
-                <li><a href="menu.html">menu</a></li>
-                <li><a href="privacy.html">privacy verklaring</a></li>
-                <li><a href="contact.html">contact</a></li>
-                <li><a href="detailoverzichtBestelling.html">detailoverzicht bezorgingen</a></li>
+                <li><a href="menu.php">menu</a></li>
+                <li><a href="privacy.php">privacy verklaring</a></li>
+                <li><a href="contact.php">contact</a></li>
+                <li><a href="detailoverzichtBestelling.php">detailoverzicht bezorgingen</a></li>
             </ul>
         </nav>
-        <div class="thuispagina"><a href="index.html">thuispagina</a></div>
-        <div class="profiel"><a href="profiel.html">profiel</a></div>
-        <div class="winkelwagen"><a href="winkelwagen.html">winkelwagen</a></div>
+        <div class="thuispagina"><a href="index.php">thuispagina</a></div>
+        <div class="profiel"><a href="profiel.php">profiel</a></div>
+        <div class="winkelwagen"><a href="winkelwagen.php">winkelwagen</a></div>
         <div class="reclamelinks"><strong>famillie pakket:</strong> Bestel 3 pizza's en krijg 1 gratis drankje 
             <div class="grid-container img">
             <img src="img/pizzamagerita.jpg" alt="pizza Margherita">

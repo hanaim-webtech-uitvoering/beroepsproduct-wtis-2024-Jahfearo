@@ -1,205 +1,141 @@
 <?php
 session_start();
+require_once __DIR__ . '/../db_connectie.php';
+$pdo = maakVerbinding();
 
-
-$bericht = '';
-require_once('//__db_connectie.php');
-require_once('//functions.php');
-$db = '';
-
-
-if(isset($_POST['cmdWinkelmandje'])){
-
-    if($_POST['cmdWinkelmandje'] == "Update bestelling"){
-        session_unset();
-        $dataWinkelmandje = $_POST['winkelmandje'];
-        foreach($dataWinkelmandje as $productnaam => $aantal){
-            if($aantal > 0){
-            $_SESSION['winkelmandje'][$productnaam] = $aantal;
-            }
-        }
-    } else{
-        //code om de bestelling te plaatsen
-        $voornaam = $_POST['voornaam'];
-        $adres = $_POST['adres'];
-        $bestelling = $_POST['winkelmandje'];
-        if($bestelling == $_SESSION['winkelmandje']){
-
-            //wanneer niemand is ingelogd
-            $sql = "INSERT INTO Pizza_Order
-    (client_username, client_name, personnel_username, datetime, status, address)
-    VALUES(NULL, $voornaam, 'wbos', datetime(), '1', $adres);";
-
-            $db = maakVerbinding();
-            $query = $db->prepare($sql);
-            $query->execute([]);
-        }
-    }
+// Hulpfunctie om prijzen netjes te formatteren
+function formatPrijs(float $bedrag): string {
+    return '€ ' . number_format($bedrag, 2, ',', '.');
 }
 
-/*
-//opbouw van tijdelijke sessiegegevens.
-$_SESSION['winkelmandje']['Coca Cola'] = 4;
-$_SESSION['winkelmandje']['Sprite'] = 3;
-$_SESSION['winkelmandje']['Knoflookbrood'] = 1;
+// 1) Verwerk acties
 
+// a) Toevoegen via menu.php
+if (isset($_POST['cmdWinkelmandje']) && $_POST['cmdWinkelmandje'] === 'Add') {
+    $naam = $_POST['productnaam'];
+    $qty  = max(1, (int)$_POST['quantity']);
 
-Winkelmandje uit sessie op basis van string
+    $_SESSION['winkelmandje'][$naam] =
+        ($_SESSION['winkelmandje'][$naam] ?? 0) + $qty;
 
-$winkelmandje = "Coca Cola-4,Sprite-3,Knofloopbrood-1";
-$producten = explode(",", $winkelmandje);
-
-$productenlijst = '<table>';
-foreach($producten as $product){
-    $productInformatie = explode("-", $product);
-    $productenlijst .= '<tr>';
-    $productenlijst .= '<td>';  
-    $productenlijst .= $productInformatie[0];
-    $productenlijst .= '</td>';
-    $productenlijst .= '<td>';   
-    $productenlijst .=     $productInformatie[1];
-    $productenlijst .= '</td>';
-    $productenlijst .= '</tr>';
+    header('Location: winkelwagen.php');
+    exit;
 }
-$productenlijst .= '</table>';
-*/
 
-
-/*
-Winkelmandje uit sessie op basis van Non-Associatief Array
-$winkelmandje = [['Coca Cola', 4],['Sprite', 3],['Knoflookbrood', 1]];
-
-$productenlijst = '<table>';
-foreach($winkelmandje as $product){
-    $productenlijst .= '<tr>';
-    $productenlijst .= '<td>';  
-    $productenlijst .= $productInformatie[0];
-    $productenlijst .= '</td>';
-    $productenlijst .= '<td>';   
-    $productenlijst .=     $productInformatie[1];
-    $productenlijst .= '</td>';
-    $productenlijst .= '</tr>';
+// b) Verwijderen vanuit winkelwagen
+if (isset($_POST['remove']) && isset($_SESSION['winkelmandje'][$_POST['remove']])) {
+    unset($_SESSION['winkelmandje'][$_POST['remove']]);
+    header('Location: winkelwagen.php');
+    exit;
 }
-$productenlijst .= '</table>';
-*/
 
-if(isset($_SESSION['winkelmandje'])){
-//hier komt code als er wel iets in het winkelmandje staat.
-$db = maakVerbinding();
-
+// 2) Weergave winkelwagen
 $viewWinkelmand = '';
-$viewWinkelmandItems = '';
-$totaalPrijs = 0;
 
-$dataWinkelmandje = $_SESSION['winkelmandje'];
-foreach($dataWinkelmandje as $productnaam => $aantal){
-    $productInformatie = getProductInformatie($productnaam, $db);
-    $subtotaal = ($aantal * $productInformatie['price']);
-    $totaalPrijs = $totaalPrijs + $subtotaal;
-    $viewWinkelmandItems .= '
-            <tr>
-                <td><img src="https://placehold.co/200x180/png" alt="'.$productnaam.'"> Informatie en iets over de '.$productnaam.'</td>
-                <td><input type="number" name="winkelmandje['.$productnaam.']" value="'.$aantal.'"></td>
-                <td>'.moneyformat($productInformatie['price']).'</td>
-                <td>'.moneyformat($subtotaal).'</td>
-            </tr>
-    ';
-    
+if (!empty($_SESSION['winkelmandje'])) {
+    $rows = '';
+    $subtotaal = 0.0;
+
+    foreach ($_SESSION['winkelmandje'] as $prodNaam => $aantal) {
+        $stmt = $pdo->prepare("SELECT price FROM Product WHERE [name] = :naam");
+        $stmt->execute([':naam' => $prodNaam]);
+        $prijs = (float)($stmt->fetchColumn() ?: 0);
+
+        $regelSubtotaal = $prijs * $aantal;
+        $subtotaal += $regelSubtotaal;
+
+        $rows .= "
+        <tr>
+            <td>" . htmlspecialchars($prodNaam) . "</td>
+            <td>$aantal</td>
+            <td>" . formatPrijs($prijs) . "</td>
+            <td>" . formatPrijs($regelSubtotaal) . "</td>
+            <td>
+              <form method=\"post\">
+                <button name=\"remove\" value=\"" . htmlspecialchars($prodNaam) . "\">Verwijder</button>
+              </form>
+            </td>
+        </tr>";
+    }
+
+    $btw = $subtotaal * 0.09;
+    $totaal = $subtotaal + $btw;
+
+    $viewWinkelmand = "
+    <table>
+      <tr>
+        <th>Product</th>
+        <th>Aantal</th>
+        <th>Prijs p/st</th>
+        <th>Subtotaal</th>
+        <th>Actie</th>
+      </tr>
+      $rows
+      <tr><td colspan=\"5\" style=\"background:#D32F2F;\"></td></tr>
+      <tr>
+        <td colspan=\"4\" style=\"text-align:right\">Subtotaal:</td>
+        <td>" . formatPrijs($subtotaal) . "</td>
+      </tr>
+      <tr>
+        <td colspan=\"4\" style=\"text-align:right\">BTW (9%):</td>
+        <td>" . formatPrijs($btw) . "</td>
+      </tr>
+      <tr>
+        <td colspan=\"4\" style=\"text-align:right;font-weight:700;\">Totaal:</td>
+        <td style=\"background:#D32F2F;font-weight:700;\">" . formatPrijs($totaal) . "</td>
+      </tr>
+    </table>";
+} else {
+    $viewWinkelmand = '<p>De winkelmand is leeg.</p>';
 }
-
-$btw = ($totaalPrijs /100 * 9);
-$viewWinkelmand .= '
-<form action="winkelwagen.php" method="post">
-        <table>
-            <tr>
-                <th>Product</th>
-                <th>Aantal</th>
-                <th>Prijs</th>
-                <th>Subtotaal</th>
-            </tr>
-            '.$viewWinkelmandItems.'
-            <tr><td colspan="4" style="background-color: #D32F2F;"></td></tr>
-            <tr>
-                <td colspan="3" style="text-align: right;">Subtotaal : </td>
-                <td>'.moneyformat(($totaalPrijs - $btw)).'</td>
-            </tr>
-            <tr>
-                <td colspan="3" style="text-align: right;">BTW : </td>
-                <td>'.moneyformat($btw).'</td>
-            </tr>
-            <tr>
-                <td colspan="3" style="text-align: right;">Totaal : </td>
-                <td style="background-color: #D32F2F;  font-weight: 700;">'.moneyformat($totaalPrijs).'</td>
-            </tr>
-            <tr><td colspan="4" style="background-color: #D32F2F;"></td></tr>
-
-        </table>
-
-                <input type="text" name="voornaam" placeholder="Voornaam">
-        <input type="text" name="adres" placeholder="6511JB, 11">
-        <input type="submit" name="cmdWinkelmandje" value="Update bestelling">
-        <input type="submit" name="cmdWinkelmandje" value="Plaats bestelling">
-       </form>
-';
-
-$bericht = $viewWinkelmand;
-}
-else{
-//hier is de winkelmand leeg.
-$bericht = 'De winkelmand is leeg.';
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="normalize.css">
-    <link rel="stylesheet" href="styles.css">
-    <title>Pizzeria Sole Machina</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="normalize.css">
+  <link rel="stylesheet" href="styles.css">
+  <title>Pizzeria Sole Machina - Winkelwagen</title>
 </head>
-
 <body>
-    <div class="wrapper">
-        <div class="logo">
-            <div class="grid-container img">
-                <img src="img/Pizzeria_Sole_Machina_Logo.jpg" alt="logo van pizzeria sole machina">
-            </div>
-        </div>        
-        <nav> 
-            <ul>
-                <li><a href="menu.html">menu</a></li>
-                <li><a href="privacy.html">privacy verklaring</a></li>
-                <li><a href="contact.html">contact </a></li>
-            </ul>
-        </nav>
-        <div class="thuispagina"><a href="index.html">thuispagina</a></div>
-        <div class="profiel"><a href="profiel.html">profiel</a></div>
-        <div class="winkelwagen"><a href="winkelwagen.html">winkelwagen</a></div>
-        <div class="reclamelinks"><strong>famillie pakket:</strong> Bestel 3 pizza's en krijg 1 gratis drankje 
-            <div class="grid-container img">
-            <img src="img/pizzamagerita.jpg" alt="pizza Margherita">
-            <img src="img/Coca-Cola-Sleek-33cl-Blik-200x667.png" alt="blikje Coca-Cola"></div></div>
-        <div class="reclamerechts"><strong>pizza woensdag</strong> alle pizzas 20% korting op woensdag
-            <div class="grid-container img">
-            <img src="img/pizzasalami.jpg" alt="pizza salami"></div></div>
-        <div class="footer"></div>
-        <div class="content"> 
-            <h1>Uw winkelwagen</h1>
-            <div class="grid-container">
-                <div class="cart">
-                    <h1>Winkelwagen</h1>
-                    <ul class="cart-items">
-                        <li>🍕 Pizza Margherita - 2x</li>
-                        <li>🥤 Coca-Cola 330ml - 2x</li>
-                    </ul>
-                    <p><strong>Totaalbedrag:</strong> €25,40</p>
-                    <p><strong>Opmerkingen:</strong> Geen speciale opmerkingen</p>
-                    <button class="order-button">Bestellen</button>
-                </div>
-            </div>
-        </div>        
+  <div class="wrapper">
+    <div class="logo">
+      <div class="grid-container img">
+        <img src="img/Pizzeria_Sole_Machina_Logo.jpg" alt="logo van pizzeria sole machina">
+      </div>
     </div>
+    <nav>
+      <ul>
+        <li><a href="menu.php">menu</a></li>
+        <li><a href="privacy.php">privacy verklaring</a></li>
+        <li><a href="contact.php">contact</a></li>
+      </ul>
+    </nav>
+    <div class="thuispagina"><a href="index.php">thuispagina</a></div>
+    <div class="profiel"><a href="profiel.php">profiel</a></div>
+    <div class="winkelwagen"><a href="winkelwagen.php">winkelwagen</a></div>
+    <div class="reclamelinks">
+      <strong>familie pakket:</strong> Bestel 3 pizza's en krijg 1 gratis drankje
+      <div class="grid-container img">
+        <img src="img/pizzamagerita.jpg" alt="pizza Margherita">
+        <img src="img/Coca-Cola-Sleek-33cl-Blik-200x667.png" alt="blikje Coca-Cola">
+      </div>
+    </div>
+    <div class="reclamerechts">
+      <strong>pizza woensdag</strong> alle pizza's 20% korting op woensdag
+      <div class="grid-container img">
+        <img src="img/pizzasalami.jpg" alt="pizza salami">
+      </div>
+    </div>
+    <div class="footer"></div>
+
+    <div class="content">
+      <h1>Uw winkelwagen</h1>
+      <div class="grid-container">
+        <?= $viewWinkelmand ?>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

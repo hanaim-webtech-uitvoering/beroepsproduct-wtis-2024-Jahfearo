@@ -17,13 +17,13 @@
         </div>        
         <nav> 
             <ul>
-                <li><a href="detailoverzichtBestelling.html">Detailoverzicht Bestelling</a></li>
-                <li><a href="BestellingoverzichtPersoneel.html">Bestellingoverzicht Personeel</a></li>
+                <li><a href="detailoverzichtBestelling.php">Detailoverzicht Bestelling</a></li>
+                <li><a href="BestellingoverzichtPersoneel.php">Bestellingoverzicht Personeel</a></li>
             </ul>
         </nav>
-        <div class="thuispagina"><a href="index.html">thuispagina</a></div>
-        <div class="profiel"><a href="profiel.html">profiel</a></div>
-        <div class="winkelwagen"><a href="winkelwagen.html">winkelwagen</a></div>
+        <div class="thuispagina"><a href="index.php">thuispagina</a></div>
+        <div class="profiel"><a href="profiel.php">profiel</a></div>
+        <div class="winkelwagen"><a href="winkelwagen.php">winkelwagen</a></div>
         <div class="reclamelinks"><strong>famillie pakket:</strong> Bestel 3 pizza's en krijg 1 gratis drankje 
             <div class="grid-container img">
             <img src="img/pizzamagerita.jpg" alt="pizza Margherita">

@@ -323,6 +323,24 @@ input[type="submit"] {
     background-color: #0056b3;
 }
 
+.order-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;    
+  margin-top: 0.5em;
+}
+
+.order-form .quantity-input {
+  width: 3em;     
+  text-align: center;
+  order: 1;      
+}
+
+
+.order-form .add-button {
+  order: 2;
+  padding: 0.2em 0.6em;
+}
 .quantity-input {
     width: 50px;
     padding: 5px;

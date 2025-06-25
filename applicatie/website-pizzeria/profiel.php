@@ -17,14 +17,14 @@
         </div>   
         <nav> 
             <ul>
-                <li><a href="menu.html">menu</a></li>
-                <li><a href="privacy.html">privacy verklaring</a></li>
-                <li><a href="contact.html">contact </a></li>
+                <li><a href="menu.php">menu</a></li>
+                <li><a href="privacy.php">privacy verklaring</a></li>
+                <li><a href="contact.php">contact </a></li>
             </ul>
         </nav>
-        <div class="thuispagina"><a href="index.html">thuispagina</a></div>
-        <div class="profiel"><a href="profiel.html">profiel</a></div>
-        <div class="winkelwagen"><a href="winkelwagen.html">winkelwagen</a></div>
+        <div class="thuispagina"><a href="index.php">thuispagina</a></div>
+        <div class="profiel"><a href="profiel.php">profiel</a></div>
+        <div class="winkelwagen"><a href="winkelwagen.php">winkelwagen</a></div>
         <div class="reclamelinks"><strong>famillie pakket:</strong> Bestel 3 pizza's en krijg 1 gratis drankje 
             <div class="grid-container img">
             <img src="img/pizzamagerita.jpg" alt="pizza Margherita">
@@ -41,7 +41,7 @@
                     
                     <section class="login">
                         <h2>Klant Login</h2>
-                        <form method="POST" action="klantPagina.html">
+                        <form method="POST" action="klantPagina.php">
                             <label for="klant-email">E-mailadres</label>
                             <input type="email" id="klant-email" name="klant-email" required>
                             
@@ -54,7 +54,7 @@
                     
                     <section class="login">
                         <h2>Personeel Login</h2>
-                        <form method="POST" action="personeelsPagina.html">
+                        <form method="POST" action="personeelsPagina.php">
                             <label for="personeel-email">E-mailadres</label>
                             <input type="email" id="personeel-email" name="personeel-email" required>
                             
