@@ -8,28 +8,32 @@ function formatPrijs(float $bedrag): string {
     return '€ ' . number_format($bedrag, 2, ',', '.');
 }
 
-// 1) Verwerk acties
+// 1) Verwerk form-acties
+if (isset($_POST['cmdWinkelmandje'])) {
+    $actie = $_POST['cmdWinkelmandje'];
 
-// a) Toevoegen via menu.php
-if (isset($_POST['cmdWinkelmandje']) && $_POST['cmdWinkelmandje'] === 'Add') {
-    $naam = $_POST['productnaam'];
-    $qty  = max(1, (int)$_POST['quantity']);
+    if ($actie === 'Add') {
+        // Vanuit menu.php: voeg item toe
+        $naam = $_POST['productnaam'];
+        $qty  = max(1, (int)$_POST['quantity']);
 
-    $_SESSION['winkelmandje'][$naam] =
-        ($_SESSION['winkelmandje'][$naam] ?? 0) + $qty;
+        $_SESSION['winkelmandje'][$naam] =
+            ($_SESSION['winkelmandje'][$naam] ?? 0) + $qty;
 
-    header('Location: winkelwagen.php');
-    exit;
+        header('Location: winkelwagen.php');
+        exit;
+    }
+
+    if ($actie === 'Update bestelling' && isset($_POST['winkelmandje'])) {
+        // Update aantallen
+        $_SESSION['winkelmandje'] = array_filter(
+            $_POST['winkelmandje'],
+            fn($aantal) => (int)$aantal > 0
+        );
+    }
 }
 
-// b) Verwijderen vanuit winkelwagen
-if (isset($_POST['remove']) && isset($_SESSION['winkelmandje'][$_POST['remove']])) {
-    unset($_SESSION['winkelmandje'][$_POST['remove']]);
-    header('Location: winkelwagen.php');
-    exit;
-}
-
-// 2) Weergave winkelwagen
+// 2) Bouw de weergave op
 $viewWinkelmand = '';
 
 if (!empty($_SESSION['winkelmandje'])) {
@@ -50,15 +54,10 @@ if (!empty($_SESSION['winkelmandje'])) {
             <td>$aantal</td>
             <td>" . formatPrijs($prijs) . "</td>
             <td>" . formatPrijs($regelSubtotaal) . "</td>
-            <td>
-              <form method=\"post\">
-                <button name=\"remove\" value=\"" . htmlspecialchars($prodNaam) . "\">Verwijder</button>
-              </form>
-            </td>
         </tr>";
     }
 
-    $btw = $subtotaal * 0.09;
+    $btw    = $subtotaal * 0.09;
     $totaal = $subtotaal + $btw;
 
     $viewWinkelmand = "
@@ -68,23 +67,28 @@ if (!empty($_SESSION['winkelmandje'])) {
         <th>Aantal</th>
         <th>Prijs p/st</th>
         <th>Subtotaal</th>
-        <th>Actie</th>
       </tr>
       $rows
-      <tr><td colspan=\"5\" style=\"background:#D32F2F;\"></td></tr>
+      <tr><td colspan=\"4\" style=\"background:#D32F2F;\"></td></tr>
       <tr>
-        <td colspan=\"4\" style=\"text-align:right\">Subtotaal:</td>
+        <td colspan=\"3\" style=\"text-align:right\">Subtotaal:</td>
         <td>" . formatPrijs($subtotaal) . "</td>
       </tr>
       <tr>
-        <td colspan=\"4\" style=\"text-align:right\">BTW (9%):</td>
+        <td colspan=\"3\" style=\"text-align:right\">BTW (9%):</td>
         <td>" . formatPrijs($btw) . "</td>
       </tr>
       <tr>
-        <td colspan=\"4\" style=\"text-align:right;font-weight:700;\">Totaal:</td>
+        <td colspan=\"3\" style=\"text-align:right;font-weight:700;\">Totaal:</td>
         <td style=\"background:#D32F2F;font-weight:700;\">" . formatPrijs($totaal) . "</td>
       </tr>
-    </table>";
+    </table>
+
+    <form action=\"bestellingformulier.php\" method=\"post\">
+      <p>
+        <button type=\"submit\" name=\"plaatsBestelling\">Plaats bestelling</button>
+      </p>
+    </form>";
 } else {
     $viewWinkelmand = '<p>De winkelmand is leeg.</p>';
 }
