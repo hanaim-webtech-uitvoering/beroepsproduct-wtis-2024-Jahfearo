@@ -1,46 +1,57 @@
 <?php
-// bestelling_formulier.php
 session_start();
 require_once __DIR__ . '/../db_connectie.php';
 $pdo = maakVerbinding();
 
-// Helper om prijzen netjes te formatteren
+
 function formatPrijs(float $bedrag): string {
     return '€ ' . number_format($bedrag, 2, ',', '.');
 }
 
-// Haal winkelwagen op
+
 $cart = $_SESSION['winkelmandje'] ?? [];
 
-// Bereken totalen en bouw de tabelraden
+
 $subtotaal = 0.0;
 $itemsHtml = '';
 foreach ($cart as $naam => $qty) {
-    $stmt = $pdo->prepare("SELECT price FROM Product WHERE [name] = :naam");
+    $stmt  = $pdo->prepare("SELECT price FROM Product WHERE [name] = :naam");
     $stmt->execute([':naam' => $naam]);
     $prijs = (float)$stmt->fetchColumn();
     $regelSub = $prijs * $qty;
     $subtotaal += $regelSub;
+
     $itemsHtml .= "
       <tr>
-        <td>" . htmlspecialchars($naam) . "</td>
+        <td>" . htmlspecialchars($naam)    . "</td>
         <td>$qty</td>
-        <td>" . formatPrijs($prijs) . "</td>
-        <td>" . formatPrijs($regelSub) . "</td>
+        <td>" . formatPrijs($prijs)        . "</td>
+        <td>" . formatPrijs($regelSub)     . "</td>
       </tr>";
 }
 
 $btw    = $subtotaal * 0.09;
 $totaal = $subtotaal + $btw;
 
-// Kijk of er een ingelogde gebruiker is
-$user = $_SESSION['username'] ?? '';
+
+$username     = $_SESSION['username'] ?? null;
+$adresDefault = '';
+
+if ($username) {
+    $stmtUser = $pdo->prepare("
+        SELECT address
+        FROM Users
+        WHERE username = :username
+    ");
+    $stmtUser->execute([':username' => $username]);
+    $adresDefault = $stmtUser->fetchColumn() ?: '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="normalize.css">
   <link rel="stylesheet" href="styles.css">
   <title>Pizzeria Sole Machina – Bestelling bevestigen</title>
@@ -86,7 +97,10 @@ $user = $_SESSION['username'] ?? '';
         <h2>Inhoud winkelwagen</h2>
         <table>
           <tr>
-            <th>Product</th><th>Aantal</th><th>Prijs p/st</th><th>Subtotaal</th>
+            <th>Product</th>
+            <th>Aantal</th>
+            <th>Prijs p/st</th>
+            <th>Subtotaal</th>
           </tr>
           <?= $itemsHtml ?>
           <tr><td colspan="4" style="background:#D32F2F;"></td></tr>
@@ -106,16 +120,14 @@ $user = $_SESSION['username'] ?? '';
 
         <h2>Gegevens invullen</h2>
         <form action="verwerkbestelling.php" method="post">
-          <?php if ($user): ?>
+          <?php if ($username): ?>
             <div class="form-group">
               <label>
                 Gebruikersnaam:
                 <input type="text" name="username"
-                       value="<?= htmlspecialchars($user) ?>" readonly>
+                       value="<?= htmlspecialchars($username) ?>" readonly>
               </label>
             </div>
-          <?php else: ?>
-            <!-- geen username-veld voor niet-ingelogden -->
           <?php endif; ?>
 
           <div class="form-group">
@@ -132,13 +144,14 @@ $user = $_SESSION['username'] ?? '';
           </div>
           <div class="form-group">
             <label>
-              Adres, Postcode, Plaats:
-              <input type="text" name="adres" 
-                     placeholder="Straat 1, 1234AB, Stad" required>
+              Adres:
+              <input type="text" name="adres" required value="<?= htmlspecialchars($adresDefault) ?>" placeholder="Straatnaam 1, 1234AB Stad">
             </label>
           </div>
           <p>
-            <button type="submit" name="cmdBestelling" value="Bevestig">Bevestig bestelling</button>
+            <button type="submit" name="cmdBestelling" value="Bevestig">
+              Bevestig bestelling
+            </button>
           </p>
         </form>
       <?php endif; ?>

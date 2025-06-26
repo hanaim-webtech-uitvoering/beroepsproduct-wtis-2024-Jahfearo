@@ -1,15 +1,15 @@
 <?php
-// menu.php
+
 session_start();
 require_once __DIR__ . '/../db_connectie.php';
 $pdo = maakVerbinding();
 
 $melding = '';
 
-// 1) Verwerk toevoegen aan winkelwagen
+
 if (isset($_POST['cmdWinkelmandje']) && $_POST['cmdWinkelmandje'] === 'Add') {
     $naam = $_POST['productnaam'];
-    $qty  = max(1, min(50, (int)$_POST['quantity'])); // tussen 1 en 50
+    $qty  = max(1, min(50, (int)$_POST['quantity'])); 
 
     $_SESSION['winkelmandje'][$naam] = 
         ($_SESSION['winkelmandje'][$naam] ?? 0) + $qty;
@@ -17,7 +17,7 @@ if (isset($_POST['cmdWinkelmandje']) && $_POST['cmdWinkelmandje'] === 'Add') {
     $melding = "$qty × \"$naam\" toegevoegd aan je winkelwagen.";
 }
 
-// 2) Haal alle categorieën (ProductType) op
+
 $stmtTypes = $pdo->query("
     SELECT [name] AS naam
     FROM ProductType
@@ -25,7 +25,7 @@ $stmtTypes = $pdo->query("
 ");
 $types = $stmtTypes->fetchAll();
 
-// 3) Bereid de statement voor om producten per type op te halen
+
 $stmtProd = $pdo->prepare("
     SELECT
       p.[name]       AS productnaam,
@@ -83,7 +83,7 @@ $stmtProd = $pdo->prepare("
     </div>
     <div class="footer"></div>
 
-    <!-- DYNAMISCHE CONTENT -->
+    
     <div class="content">
       <h1>Ons assortiment</h1>
 
@@ -95,7 +95,6 @@ $stmtProd = $pdo->prepare("
         <?php foreach ($types as $type): ?>
           <?php
             $typeNaam = $type['naam'];
-            // haal producten voor deze categorie op
             $stmtProd->execute([':typeNaam' => $typeNaam]);
             $producten = $stmtProd->fetchAll();
           ?>

@@ -3,78 +3,103 @@ session_start();
 require_once __DIR__ . '/../db_connectie.php';
 $pdo = maakVerbinding();
 
-// Helper voor foutmeldingen
 function foutmelding(string $msg) {
-  global $fout;
-  $fout = $msg;
+    global $fout;
+    $fout = $msg;
 }
 
-// Formulierverwerking
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['cmdBestelling'] ?? '') === 'Bevestig') {
-  $voornaam   = trim($_POST['voornaam'] ?? '');
-  $achternaam = trim($_POST['achternaam'] ?? '');
-  $adres      = trim($_POST['adres'] ?? '');
-  $username   = $_SESSION['username'] ?? null;
-  $winkelmandje = $_SESSION['winkelmandje'] ?? [];
+    $voornaam    = trim($_POST['voornaam']    ?? '');
+    $achternaam  = trim($_POST['achternaam']  ?? '');
+    $adres       = trim($_POST['adres']       ?? '');
+    $username    = $_SESSION['username']      ?? null;
+    $winkelmandje= $_SESSION['winkelmandje']  ?? [];
 
-  if (!$voornaam || !$achternaam || !$adres) {
-    foutmelding("Vul alle vereiste velden in.");
-  } elseif (empty($winkelmandje)) {
-    foutmelding("Je winkelwagen is leeg.");
-  } else {
-    try {
-      $pdo->beginTransaction();
+    
+    if (!$voornaam || !$achternaam || !$adres) {
+        foutmelding("Vul alle vereiste velden in.");
+    } elseif (empty($winkelmandje)) {
+        foutmelding("Je winkelwagen is leeg.");
+    } else {
+        try {
+           
+            $stmtPers = $pdo->query("
+                SELECT TOP 1 username 
+                FROM users 
+                WHERE role = 'Personnel' 
+                ORDER BY NEWID()
+            ");
+            $personeel = $stmtPers->fetchColumn();
+            if (!$personeel) {
+                throw new Exception("Geen personeel beschikbaar.");
+            }
 
-      $volledigeNaam = $voornaam . ' ' . $achternaam;
+            $pdo->beginTransaction();
 
-      $stmt = $pdo->prepare("INSERT INTO Pizza_Order (client_username, client_name, personnel_username, datetime, status, address)
-        VALUES (:username, :naam, :personeel, GETDATE(), 1, :adres)");
+            
+            $volledigeNaam = $voornaam . ' ' . $achternaam;
 
-      $stmt->execute([
-        ':username' => $username,
-        ':naam'     => $volledigeNaam,
-        ':personeel'=> 'wbos', // dummy gebruiker
-        ':adres'    => $adres
-      ]);
+            $stmt = $pdo->prepare("
+                INSERT INTO Pizza_Order
+                  (client_username, client_name, personnel_username, datetime, status, address)
+                VALUES
+                  (:username, :naam, :personeel, GETDATE(), 1, :adres)
+            ");
+            $stmt->execute([
+                ':username'  => $username,
+                ':naam'      => $volledigeNaam,
+                ':personeel' => $personeel,
+                ':adres'     => $adres
+            ]);
 
-      $orderId = $pdo->lastInsertId();
+            
+            $orderId = $pdo->lastInsertId();
+            if (!$orderId) {
+                throw new Exception("Kon ordernummer niet ophalen.");
+            }
 
-      $stmtProd = $pdo->prepare("INSERT INTO Pizza_Order_Product (order_id, product_name, quantity)
-        VALUES (:orderId, :product, :qty)");
+            
+            $stmtProd = $pdo->prepare("
+                INSERT INTO Pizza_Order_Product
+                  (order_id, product_name, quantity)
+                VALUES
+                  (:orderId, :product, :qty)
+            ");
+            foreach ($winkelmandje as $naam => $qty) {
+                $stmtProd->execute([
+                    ':orderId' => $orderId,
+                    ':product' => $naam,
+                    ':qty'     => $qty
+                ]);
+            }
 
-      foreach ($winkelmandje as $naam => $qty) {
-        $stmtProd->execute([
-          ':orderId' => $orderId,
-          ':product' => $naam,
-          ':qty'     => $qty
-        ]);
-      }
+            $pdo->commit();
+            
+            unset($_SESSION['winkelmandje']);
+            $bestelnummer = $orderId;
 
-      $pdo->commit();
-      unset($_SESSION['winkelmandje']);
-      $bestelnummer = $orderId;
-
-    } catch (Exception $e) {
-      $pdo->rollBack();
-      foutmelding("Bestelling mislukt: " . $e->getMessage());
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            foutmelding("Bestelling mislukt: " . $e->getMessage());
+        }
     }
-  }
 }
 ?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="normalize.css">
   <link rel="stylesheet" href="styles.css">
-  <title>Pizzeria Sole Machina – Bestelbevestiging</title>
+  <title>Bestelbevestiging – Pizzeria Sole Machina</title>
 </head>
 <body>
   <div class="wrapper">
     <div class="logo">
       <div class="grid-container img">
-        <img src="img/Pizzeria_Sole_Machina_Logo.jpg" alt="logo van pizzeria sole machina">
+        <img src="img/Pizzeria_Sole_Machina_Logo.jpg" alt="logo">
       </div>
     </div>
     <nav>
@@ -90,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['cmdBestelling'] ?? '') ===
     <div class="reclamelinks">
       <strong>familie pakket:</strong> Bestel 3 pizza's en krijg 1 gratis drankje
       <div class="grid-container img">
-        <img src="img/pizzamagerita.jpg" alt="pizza Margherita">
+        <img src="img/pizzamagerita.jpg" alt="pizza">
         <img src="img/Coca-Cola-Sleek-33cl-Blik-200x667.png" alt="blikje Coca-Cola">
       </div>
     </div>
@@ -106,14 +131,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['cmdBestelling'] ?? '') ===
       <h1>Bestelbevestiging</h1>
 
       <?php if (!empty($fout)): ?>
-        <p style="color:red;"><strong><?= htmlspecialchars($fout) ?></strong></p>
+        <p class="error"><strong><?= htmlspecialchars($fout) ?></strong></p>
         <p><a href="bestelling_formulier.php">Ga terug naar het formulier</a></p>
       <?php elseif (isset($bestelnummer)): ?>
         <p>Bedankt voor je bestelling!</p>
-        <p>Je bestelling is geplaatst onder bestelnummer <strong>#<?= $bestelnummer ?></strong>.</p>
+        <p>Je bestelnummer is <strong>#<?= htmlspecialchars($bestelnummer) ?></strong>.</p>
         <p><a href="menu.php">Terug naar het menu</a></p>
       <?php else: ?>
-        <p>Er is iets misgegaan. Probeer het opnieuw.</p>
+        <p>Er ging iets mis. Probeer het opnieuw.</p>
         <p><a href="menu.php">Ga terug naar het menu</a></p>
       <?php endif; ?>
     </div>
