@@ -1,19 +1,19 @@
 <?php
+// winkelwagen.php op basis van voorbeeld winkelwagen.php
 session_start();
 require_once __DIR__ . '/../db_connectie.php';
 $pdo = maakVerbinding();
 
-// Hulpfunctie om prijzen netjes te formatteren
+
 function formatPrijs(float $bedrag): string {
     return '€ ' . number_format($bedrag, 2, ',', '.');
 }
 
-// 1) Verwerk form-acties
+
 if (isset($_POST['cmdWinkelmandje'])) {
     $actie = $_POST['cmdWinkelmandje'];
 
     if ($actie === 'Add') {
-        // Vanuit menu.php: voeg item toe
         $naam = $_POST['productnaam'];
         $qty  = max(1, (int)$_POST['quantity']);
 
@@ -25,7 +25,6 @@ if (isset($_POST['cmdWinkelmandje'])) {
     }
 
     if ($actie === 'Update bestelling' && isset($_POST['winkelmandje'])) {
-        // Update aantallen
         $_SESSION['winkelmandje'] = array_filter(
             $_POST['winkelmandje'],
             fn($aantal) => (int)$aantal > 0
@@ -33,7 +32,7 @@ if (isset($_POST['cmdWinkelmandje'])) {
     }
 }
 
-// 2) Bouw de weergave op
+
 $viewWinkelmand = '';
 
 if (!empty($_SESSION['winkelmandje'])) {
