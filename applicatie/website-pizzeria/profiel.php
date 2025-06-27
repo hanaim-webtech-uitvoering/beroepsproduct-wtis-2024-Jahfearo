@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (isset($_POST['register'])) {
         if (!$username || !$password || !$first_name || !$last_name) {
-            $foutRegister = "Vul alle verplichte velden in (naam & wachtwoord).";
+            $foutRegister = "Vul alle verplichte velden in.";
         } else {
             $check = $pdo->prepare("SELECT 1 FROM users WHERE username = :username");
             $check->execute([':username' => $username]);
